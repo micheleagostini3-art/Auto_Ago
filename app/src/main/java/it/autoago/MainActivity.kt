@@ -100,7 +100,8 @@ class MainActivity : Activity() {
             setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_menu_save, 0, 0, 0)
         }
         root.addView(card)
-        root.addView(saveButton, ViewGroup.LayoutParams.MATCH_PARENT, 60).apply { (this.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 18, 0, 0) }
+        root.addView(saveButton, ViewGroup.LayoutParams.MATCH_PARENT, 60)
+        saveButton.layoutParams = (saveButton.layoutParams as? ViewGroup.MarginLayoutParams)?.apply { setMargins(0, 18, 0, 0) } ?: ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 60).apply { setMargins(0, 18, 0, 0) }
 
         setContentView(root)
     }
@@ -165,7 +166,8 @@ class MainActivity : Activity() {
             setOnClickListener { chooseExportLocation() }
             isAllCaps = false
         }
-        root.addView(exportButton, ViewGroup.LayoutParams.MATCH_PARENT, 54).apply { (this.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 18, 0, 0) }
+        root.addView(exportButton, ViewGroup.LayoutParams.MATCH_PARENT, 54)
+        exportButton.layoutParams = (exportButton.layoutParams as? ViewGroup.MarginLayoutParams)?.apply { setMargins(0, 18, 0, 0) } ?: ViewGroup.MarginLayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 54).apply { setMargins(0, 18, 0, 0) }
 
         val note = TextView(this).apply {
             text = "Il file TXT viene creato e aggiornato automaticamente; puoi salvarlo in Download o in una cartella a tua scelta."
@@ -430,5 +432,5 @@ class MainActivity : Activity() {
         else -> "Gas"
     }
 
-    private fun fmt(value: Double, decimals: Int = 0): String = String.format(Locale.ITALY, "% .${decimals}f", value).trim()
+    private fun fmt(value: Double, decimals: Int = 0): String = String.format(Locale.ITALY, "%.${decimals}f", value)
 }
