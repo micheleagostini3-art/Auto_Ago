@@ -1,11 +1,14 @@
 # Auto Ago
 
-App Android per registrare i rifornimenti dell'auto.
+Registro rifornimenti per Android.
 
-## Funzioni
-- Inserimento data/ora automatiche, KM, carburante (metano, benzina, gasolio), prezzo al litro, importo e note.
-- Archivio ordinato dal più recente al più vecchio.
-- Calcolo dei KM percorsi per 1 €: `(KM rifornimento corrente - KM rifornimento precedente) / importo`.
-- Pulsante **Salva TXT / aggiorna archivio**: crea o aggiorna `rifornimenti.txt` nella directory privata dell'app (`filesDir`).
+## Dove viene salvato il TXT
+Quando salvi un rifornimento, l'app aggiorna automaticamente `rifornimenti.txt` nella memoria privata dell'app (`Android/data/it.autoago/files/`), che su Android recenti è nascosta per sicurezza.
 
-Aprire il progetto con Android Studio e generare l'APK con **Build > Build APK(s)**.
+Per salvarlo in una posizione visibile:
+1. Apri **Archivio rifornimenti**.
+2. Premi **ESPORTA / SALVA FILE TXT**.
+3. Scegli **Download** (o un'altra cartella).
+4. Conferma il nome `rifornimenti.txt`.
+
+Non servono permessi speciali: viene usato il selettore file ufficiale di Android.
