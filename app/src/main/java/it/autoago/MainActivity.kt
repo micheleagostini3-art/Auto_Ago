@@ -5,23 +5,21 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
+import android.text.InputType
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("auto_ago", MODE_PRIVATE) }
-    private val dateFormat = SimpleDateFormat("dd/MM/yyyy  HH:mm", Locale.ITALY)
-    private lateinit var content: LinearLayout
+    private val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY)
+
     private lateinit var dateField: TextView
     private lateinit var kmField: EditText
     private lateinit var fuelField: Spinner
@@ -29,128 +27,408 @@ class MainActivity : Activity() {
     private lateinit var amountField: EditText
     private lateinit var notesField: EditText
 
+    private val blue = Color.rgb(91, 112, 255)
+    private val purple = Color.rgb(123, 90, 197)
     private val red = Color.rgb(214, 45, 52)
-    private val dark = Color.rgb(35, 38, 45)
-    private val muted = Color.rgb(103, 109, 121)
-    private val page = Color.rgb(247, 248, 251)
+    private val dark = Color.rgb(26, 31, 46)
+    private val slate = Color.rgb(96, 108, 128)
+    private val page = Color.rgb(245, 247, 250)
+    private val white = Color.rgb(255, 255, 255)
+    private val stroke = Color.rgb(226, 232, 240)
 
-    override fun onCreate(state: Bundle?) { super.onCreate(state); showEntry() }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        showEntry()
+    }
 
     private fun showEntry() {
-        val body = baseScreen("Nuovo rifornimento", "Inserisci i dati del rifornimento")
-        val card = card()
-        body.addView(card)
-
-        card.addView(sectionTitle("DATA E ORA"))
-        dateField = TextView(this).apply {
-            text = dateFormat.format(Date()); textSize = 17f; setTextColor(dark)
-            gravity = Gravity.CENTER_VERTICAL; setPadding(18, 0, 18, 0); background = fieldBackground()
+        val root = buildRoot("Nuovo rifornimento", "Dati giornalieri del tuo veicolo")
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(18, 18, 18, 18)
+            background = roundedCard(white, 28f)
+            elevation = 8f
         }
-        card.addView(dateField, fieldParams(52))
 
-        card.addView(sectionTitle("DATI DEL RIFORNIMENTO"))
-        kmField = input("KM letti dal cruscotto", false); card.addView(kmField, fieldParams(56))
+        card.addView(labelSmall("DATA E ORA"))
+        dateField = TextView(this).apply {
+            text = dateFormat.format(java.util.Date())
+            gravity = Gravity.CENTER_VERTICAL
+            setTextColor(dark)
+            textSize = 17f
+            setPadding(18, 16, 18, 16)
+            background = roundedField(white, 16f, stroke, 1)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        card.addView(dateField, fieldLayout(62))
+
+        card.addView(labelSmall("KM E CARBURANTE"))
+        kmField = inputField("KM letti dal cruscotto", false)
+        card.addView(kmField, fieldLayout(60))
+
         fuelField = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("Metano (met)", "Benzina (benz)", "Gasolio (Gas)"))
-            background = fieldBackground(); setPadding(12, 0, 12, 0)
+            background = roundedField(white, 16f, stroke, 1)
         }
-        card.addView(fuelField, fieldParams(56))
-        priceField = input("Prezzo al litro  €", true); card.addView(priceField, fieldParams(56))
-        amountField = input("Importo pagato  €", true); card.addView(amountField, fieldParams(56))
+        card.addView(fuelField, fieldLayout(60))
 
-        card.addView(sectionTitle("NOTE / MANUTENZIONI"))
-        notesField = input("Scrivi qui eventuali dettagli", false).apply { minLines = 3; gravity = Gravity.TOP; setPadding(18, 14, 18, 14) }
-        card.addView(notesField, fieldParams(92))
+        card.addView(labelSmall("PREZZO E IMPORTO"))
+        priceField = inputField("Prezzo al litro  €", true)
+        card.addView(priceField, fieldLayout(60))
 
-        val save = Button(this).apply {
-            text = "  SALVA RIFORNIMENTO"; textSize = 15f; typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE); background = rounded(red, 18f); isAllCaps = false
+        amountField = inputField("Importo pagato  €", true)
+        card.addView(amountField, fieldLayout(60))
+
+        card.addView(labelSmall("NOTE / MANUTENZIONI"))
+        notesField = inputField("Dettagli o manutenzioni", false).apply {
+            minLines = 3
+            setSingleLine(false)
+            gravity = Gravity.TOP or Gravity.START
+            setPadding(18, 16, 18, 16)
+        }
+        card.addView(notesField, fieldLayout(120))
+
+        val saveButton = Button(this).apply {
+            text = "SALVA RIFORNIMENTO"
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 16f
+            setTextColor(white)
+            isAllCaps = false
+            background = gradientButton(red, purple)
+            setOnClickListener { saveFuel() }
+            compoundDrawablePadding = 10
             setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_menu_save, 0, 0, 0)
-            compoundDrawablePadding = 10; setOnClickListener { saveFuel() }
         }
-        body.addView(save, LinearLayout.LayoutParams(-1, 58).apply { setMargins(0, 18, 0, 12) })
-        val hint = TextView(this).apply { text = "I dati vengono conservati anche se chiudi l'app"; textSize = 12f; setTextColor(muted); gravity = Gravity.CENTER }
-        body.addView(hint, LinearLayout.LayoutParams(-1, 30))
+        root.addView(card)
+        root.addView(saveButton, ViewGroup.LayoutParams.MATCH_PARENT, 60).apply { (this.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 18, 0, 0) }
+
+        setContentView(root)
     }
 
     private fun showArchive() {
-        val body = baseScreen("Archivio rifornimenti", "I più recenti sono visualizzati per primi")
+        val root = buildRoot("Archivio rifornimenti", "Ordine cronologico: più recente in alto")
         val records = recordsSorted()
+
         if (records.isEmpty()) {
-            body.addView(TextView(this).apply { text = "Nessun rifornimento registrato"; textSize = 18f; setTextColor(muted); gravity = Gravity.CENTER; setPadding(0, 50, 0, 50) })
-        } else {
-            val scroll = HorizontalScrollView(this)
-            val table = TableLayout(this).apply { setPadding(0, 4, 0, 4) }
-            table.addView(row(arrayOf("DATA", "KM", "TIPO", "€/L", "EURO", "KM/€", "NOTE"), true))
-            var previousKm: Double? = null
-            records.forEach { r ->
-                val km = r.optDouble("km"); val amount = r.optDouble("amount")
-                val perEuro = previousKm?.let { (km - it) / amount }
-                table.addView(row(arrayOf(r.optString("date"), fmt(km), shortFuel(r.optString("fuel")), fmt(r.optDouble("price"), 3), fmt(amount, 2), perEuro?.let { fmt(it, 2) } ?: "—", r.optString("notes").ifBlank { "—" }), false))
-                previousKm = km
+            val empty = TextView(this).apply {
+                text = "Nessun rifornimento registrato" 
+                setTextColor(slate)
+                textSize = 18f
+                gravity = Gravity.CENTER
+                setPadding(0, 40, 0, 40)
             }
-            scroll.addView(table); body.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+            root.addView(empty)
+        } else {
+            val tableCard = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = roundedCard(white, 24f)
+                setPadding(10, 10, 10, 10)
+                elevation = 6f
+            }
+
+            val wrapper = HorizontalScrollView(this)
+            val table = TableLayout(this).apply { isStretchAllColumns = false }
+            table.addView(rowHeader(arrayOf("DATA", "KM", "CARB", "€/L", "€", "KM/€", "NOTE")))
+
+            val kmPerEuroById = kmPerEuroMap(records)
+            records.forEach { record ->
+                val kmValue = record.optDouble("km")
+                val note = record.optString("notes").ifBlank { "-" }
+                val fuel = shortFuel(record.optString("fuel"))
+                val kmEuro = kmPerEuroById[record.optLong("timestamp")] ?: 0.0
+                table.addView(
+                    rowData(
+                        arrayOf(
+                            record.optString("date"),
+                            fmt(kmValue),
+                            fuel,
+                            fmt(record.optDouble("price"), 3),
+                            fmt(record.optDouble("amount"), 2),
+                            fmt(kmEuro, 2),
+                            note
+                        )
+                    )
+                )
+            }
+
+            wrapper.addView(table)
+            tableCard.addView(wrapper)
+            root.addView(tableCard)
         }
-        val export = Button(this).apply {
-            text = "ESPORTA / SALVA FILE TXT"; textSize = 14f; typeface = Typeface.DEFAULT_BOLD; isAllCaps = false
-            setTextColor(red); background = rounded(Color.WHITE, 16f); setOnClickListener { chooseExportLocation() }
+
+        val exportButton = Button(this).apply {
+            text = "ESPORTA TXT"
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 15f
+            setTextColor(blue)
+            background = roundedField(white, 16f, stroke, 1)
+            setOnClickListener { chooseExportLocation() }
+            isAllCaps = false
         }
-        body.addView(export, LinearLayout.LayoutParams(-1, 54).apply { setMargins(0, 14, 0, 8) })
-        val info = TextView(this).apply { text = "Il file viene salvato inizialmente nella memoria privata dell'app. Usa il pulsante sopra per scegliere Download o un'altra cartella."; textSize = 12f; setTextColor(muted); setPadding(8, 0, 8, 8) }
-        body.addView(info)
+        root.addView(exportButton, ViewGroup.LayoutParams.MATCH_PARENT, 54).apply { (this.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 18, 0, 0) }
+
+        val note = TextView(this).apply {
+            text = "Il file TXT viene creato e aggiornato automaticamente; puoi salvarlo in Download o in una cartella a tua scelta."
+            textSize = 12f
+            setTextColor(slate)
+            setPadding(6, 14, 6, 0)
+        }
+        root.addView(note)
+        setContentView(root)
     }
 
-    private fun baseScreen(title: String, subtitle: String): LinearLayout {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(page); setPadding(18, 12, 18, 12) }
-        val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, 4) }
-        val logo = ImageView(this).apply { setImageResource(R.drawable.app_icon); contentDescription = "Auto Ago" }
-        top.addView(logo, LinearLayout.LayoutParams(58, 58))
-        val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(12, 0, 0, 0) }
-        titles.addView(TextView(this).apply { text = "AUTO AGO"; textSize = 24f; typeface = Typeface.DEFAULT_BOLD; setTextColor(dark) })
-        titles.addView(TextView(this).apply { text = title; textSize = 15f; setTextColor(red) })
-        top.addView(titles, LinearLayout.LayoutParams(0, -2, 1f)); root.addView(top)
-        root.addView(TextView(this).apply { text = subtitle; textSize = 13f; setTextColor(muted); setPadding(70, 0, 0, 10) }, LinearLayout.LayoutParams(-1, 34))
-        val nav = LinearLayout(this).apply { setPadding(0, 0, 0, 10) }
-        nav.addView(navButton("＋  Nuovo") { showEntry() }, LinearLayout.LayoutParams(0, 46, 1f))
-        nav.addView(navButton("▤  Archivio") { showArchive() }, LinearLayout.LayoutParams(0, 46, 1f))
+    private fun buildRoot(title: String, subtitle: String): LinearLayout {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(page)
+            setPadding(18, 20, 18, 22)
+        }
+
+        val topBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 8)
+        }
+
+        val appIcon = ImageView(this).apply {
+            setImageResource(R.drawable.app_icon)
+            layoutParams = LinearLayout.LayoutParams(58, 58)
+            adjustViewBounds = true
+        }
+        topBar.addView(appIcon)
+
+        val titleWrap = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(12, 0, 0, 0)
+        }
+        titleWrap.addView(TextView(this).apply {
+            text = "AUTO AGO"
+            setTextColor(dark)
+            textSize = 20f
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        titleWrap.addView(TextView(this).apply {
+            text = title
+            setTextColor(red)
+            textSize = 16f
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        topBar.addView(titleWrap, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 10, 0, 10)
+        }
+        nav.addView(navButton("Nuovo", true) { showEntry() }, LinearLayout.LayoutParams(0, 46, 1f).apply { setMargins(0,0,8,0) })
+        nav.addView(navButton("Archivio", false) { showArchive() }, LinearLayout.LayoutParams(0, 46, 1f))
+
+        root.addView(topBar)
+        root.addView(TextView(this).apply {
+            text = subtitle
+            setTextColor(slate)
+            textSize = 13f
+            setPadding(6, 0, 0, 0)
+        })
         root.addView(nav)
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(ScrollView(this).apply { addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root); return content
+
+        return root
+    }
+
+    private fun navButton(title: String, active: Boolean, action: () -> Unit): Button = Button(this).apply {
+        text = title
+        isAllCaps = false
+        textSize = 14f
+        typeface = Typeface.DEFAULT_BOLD
+        setTextColor(if (active) white else dark)
+        background = if (active) gradientButton(red, purple) else roundedField(white, 16f, stroke, 1)
+        setOnClickListener { action() }
     }
 
     private fun saveFuel() {
-        val km = number(kmField); val price = number(priceField); val amount = number(amountField)
-        if (km == null || price == null || amount == null || km < 0 || price < 0 || amount <= 0) { toast("Controlla KM, prezzo e importo"); return }
-        val all = readRecords(); all.put(JSONObject().apply { put("date", dateField.text); put("timestamp", System.currentTimeMillis()); put("km", km); put("fuel", fuelField.selectedItem); put("price", price); put("amount", amount); put("notes", notesField.text.toString()) })
-        prefs.edit().putString("records", all.toString()).apply(); writeInternalTxt(all); toast("Rifornimento salvato"); showArchive()
+        val kmValue = parseDecimal(kmField)
+        val priceValue = parseDecimal(priceField)
+        val amountValue = parseDecimal(amountField)
+
+        if (kmValue == null || priceValue == null || amountValue == null) {
+            Toast.makeText(this, "Inserisci KM, prezzo e importo validi", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        if (kmValue < 0 || priceValue < 0 || amountValue <= 0) {
+            Toast.makeText(this, "Controlla i valori inseriti", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val records = readRecords()
+        val data = JSONObject().apply {
+            put("date", dateField.text.toString())
+            put("timestamp", System.currentTimeMillis())
+            put("km", kmValue)
+            put("fuel", fuelField.selectedItem.toString())
+            put("price", priceValue)
+            put("amount", amountValue)
+            put("notes", notesField.text.toString())
+        }
+        records.put(data)
+        prefs.edit().putString("records", records.toString()).apply()
+        writeInternalTxt(records)
+        Toast.makeText(this, "Rifornimento salvato", Toast.LENGTH_SHORT).show()
+        showArchive()
     }
 
     private fun chooseExportLocation() {
-        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply { type = "text/plain"; putExtra(Intent.EXTRA_TITLE, "rifornimenti.txt"); addCategory(Intent.CATEGORY_OPENABLE) }
-        startActivityForResult(intent, 42)
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TITLE, "rifornimenti.txt")
+        }
+        startActivityForResult(intent, 101)
     }
 
-    override fun onActivityResult(request: Int, result: Int, data: Intent?) {
-        super.onActivityResult(request, result, data)
-        if (request == 42 && result == RESULT_OK && data?.data != null) try { contentResolver.openOutputStream(data.data!!)?.use { it.write(exportText(readRecords()).toByteArray(Charsets.UTF_8)) }; toast("File TXT salvato nella cartella scelta") } catch (_: Exception) { toast("Impossibile salvare il file") }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 101 && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            val content = exportText(readRecords())
+            try {
+                contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray(Charsets.UTF_8)) }
+                Toast.makeText(this, "File TXT salvato correttamente", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                Toast.makeText(this, "Impossibile salvare il file TXT", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
-    private fun card() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(16, 8, 16, 16); background = rounded(Color.WHITE, 22f); elevation = 5f }
-    private fun sectionTitle(s: String) = TextView(this).apply { text = s; textSize = 11f; typeface = Typeface.DEFAULT_BOLD; setTextColor(red); setPadding(2, 18, 2, 8) }
-    private fun input(hint: String, decimal: Boolean) = EditText(this).apply { this.hint = hint; textSize = 16f; setTextColor(dark); setHintTextColor(muted); background = fieldBackground(); inputType = if (decimal) 8194 else 2; setPadding(18, 0, 18, 0) }
-    private fun fieldParams(h: Int) = LinearLayout.LayoutParams(-1, h).apply { setMargins(0, 4, 0, 7) }
-    private fun fieldBackground() = rounded(Color.rgb(250, 250, 252), 12f, Color.rgb(225, 227, 233), 2)
-    private fun rounded(color: Int, radius: Float, stroke: Int? = null, width: Int = 0) = GradientDrawable().apply { setColor(color); cornerRadius = radius; if (stroke != null) setStroke(width, stroke) }
-    private fun navButton(text: String, action: () -> Unit) = Button(this).apply { this.text = text; textSize = 13f; isAllCaps = false; setTextColor(dark); background = rounded(Color.WHITE, 14f, Color.rgb(230, 231, 235), 1); setOnClickListener { action() } }
-    private fun row(values: Array<String>, header: Boolean) = TableRow(this).apply { values.forEach { value -> addView(TextView(this@MainActivity).apply { text = value; textSize = if (header) 11f else 12f; typeface = if (header) Typeface.DEFAULT_BOLD else Typeface.DEFAULT; setTextColor(if (header) Color.WHITE else dark); setPadding(12, 14, 12, 14); background = rounded(if (header) red else Color.WHITE, 0f) }) } }
-    private fun readRecords() = try { JSONArray(prefs.getString("records", "[]")) } catch (_: Exception) { JSONArray() }
-    private fun recordsSorted() = (0 until readRecords().length()).map { readRecords().getJSONObject(it) }.sortedByDescending { it.optLong("timestamp") }
-    private fun number(e: EditText) = e.text.toString().trim().replace(',', '.').toDoubleOrNull()
-    private fun fmt(n: Double, decimals: Int = 0) = String.format(Locale.ITALY, "%.${decimals}f", n)
-    private fun shortFuel(s: String) = when { s.startsWith("Metano") -> "met"; s.startsWith("Benzina") -> "benz"; else -> "Gas" }
-    private fun txtFile() = File(filesDir, "rifornimenti.txt")
-    private fun exportText(records: JSONArray): String { val sorted = (0 until records.length()).map { records.getJSONObject(it) }.sortedByDescending { it.optLong("timestamp") }; return buildString { appendLine("Data\tKM\tCarburante\tPrezzo/L\tImporto\tKM per €\tNote"); var previous: Double? = null; sorted.forEach { r -> val km = r.optDouble("km"); val amount = r.optDouble("amount"); appendLine("${r.optString("date")}\t${fmt(km)}\t${r.optString("fuel")}\t${fmt(r.optDouble("price"), 3)}\t${fmt(amount, 2)}\t${previous?.let { fmt((km - it) / amount, 2) } ?: "—"}\t${r.optString("notes").replace('\t', ' ')}"); previous = km } } }
-    private fun writeInternalTxt(records: JSONArray) { txtFile().writeText(exportText(records), Charsets.UTF_8) }
-    private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
+    private fun readRecords(): JSONArray = try {
+        JSONArray(prefs.getString("records", "[]"))
+    } catch (_: Exception) {
+        JSONArray()
+    }
+
+    private fun recordsSorted(): List<JSONObject> = readRecords().let { array ->
+        (0 until array.length()).map { array.getJSONObject(it) }
+            .sortedByDescending { it.optLong("timestamp") }
+    }
+
+    private fun kmPerEuroMap(records: List<JSONObject>): Map<Long, Double> {
+        val ordered = records.sortedBy { it.optLong("timestamp") }
+        val map = linkedMapOf<Long, Double>()
+        var previousKm: Double? = null
+
+        ordered.forEach { item ->
+            val currentKm = item.optDouble("km")
+            val currentAmount = item.optDouble("amount")
+            val value = if (previousKm != null && currentAmount > 0.0) {
+                (currentKm - previousKm!!) / currentAmount
+            } else {
+                0.0
+            }
+            map[item.optLong("timestamp")] = value
+            previousKm = currentKm
+        }
+        return map
+    }
+
+    private fun writeInternalTxt(records: JSONArray) {
+        val file = File(filesDir, "rifornimenti.txt")
+        file.writeText(exportText(records), Charsets.UTF_8)
+    }
+
+    private fun exportText(records: JSONArray): String {
+        val sorted = (0 until records.length()).map { records.getJSONObject(it) }.sortedByDescending { it.optLong("timestamp") }
+        val lines = arrayListOf<String>()
+        lines.add("Data\tKM\tCarburante\tPrezzo/L\tImporto\tKM per €\tNote")
+
+        var previousKm: Double? = null
+        sorted.forEach { item ->
+            val km = item.optDouble("km")
+            val amount = item.optDouble("amount")
+            val kmPerEuro = if (previousKm != null && amount > 0.0) (km - previousKm!!) / amount else 0.0
+            val note = item.optString("notes").replace("\t", " ")
+            lines.add("${item.optString("date")}\t${fmt(km)}\t${item.optString("fuel")}\t${fmt(item.optDouble("price"), 3)}\t${fmt(amount, 2)}\t${fmt(kmPerEuro, 2)}\t${note}")
+            previousKm = km
+        }
+        return lines.joinToString(System.lineSeparator()) + System.lineSeparator()
+    }
+
+    private fun inputField(hint: String, decimal: Boolean): EditText = EditText(this).apply {
+        this.hint = hint
+        setTextColor(dark)
+        setHintTextColor(slate)
+        textSize = 16f
+        setPadding(18, 16, 18, 16)
+        background = roundedField(white, 16f, stroke, 1)
+        inputType = if (decimal) InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL else InputType.TYPE_CLASS_NUMBER
+    }
+
+    private fun parseDecimal(editText: EditText): Double? {
+        return editText.text.toString().trim().replace(',', '.').toDoubleOrNull()
+    }
+
+    private fun rowHeader(values: Array<String>): TableRow = TableRow(this).apply {
+        values.forEach { value ->
+            addView(TextView(this@MainActivity).apply {
+                text = value
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(white)
+                textSize = 11f
+                setPadding(10, 12, 10, 12)
+                background = GradientDrawable().apply {
+                    setColor(red)
+                    shape = GradientDrawable.RECTANGLE
+                }
+            })
+        }
+    }
+
+    private fun rowData(values: Array<String>): TableRow = TableRow(this).apply {
+        values.forEach { value ->
+            addView(TextView(this@MainActivity).apply {
+                text = value
+                setTextColor(dark)
+                textSize = 12f
+                setPadding(10, 12, 10, 12)
+                background = roundedField(white, 0f, stroke, 1)
+            })
+        }
+    }
+
+    private fun labelSmall(value: String): TextView = TextView(this).apply {
+        text = value
+        setTextColor(red)
+        textSize = 11f
+        typeface = Typeface.DEFAULT_BOLD
+        setPadding(4, 18, 4, 8)
+    }
+
+    private fun fieldLayout(height: Int): LinearLayout.LayoutParams = LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        height
+    ).apply { setMargins(0, 0, 0, 10) }
+
+    private fun roundedField(color: Int, radius: Float, strokeColor: Int, strokeWidth: Int): GradientDrawable = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = radius
+        setStroke(strokeWidth, strokeColor)
+    }
+
+    private fun roundedCard(color: Int, radius: Float): GradientDrawable = GradientDrawable().apply {
+        setColor(color)
+        cornerRadius = radius
+    }
+
+    private fun gradientButton(start: Int, end: Int): GradientDrawable = GradientDrawable(
+        GradientDrawable.Orientation.LEFT_RIGHT,
+        intArrayOf(start, end)
+    ).apply {
+        cornerRadius = 18f
+    }
+
+    private fun shortFuel(value: String): String = when {
+        value.startsWith("Metano") -> "met"
+        value.startsWith("Benzina") -> "benz"
+        else -> "Gas"
+    }
+
+    private fun fmt(value: Double, decimals: Int = 0): String = String.format(Locale.ITALY, "% .${decimals}f", value).trim()
 }
